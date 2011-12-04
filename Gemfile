@@ -4,5 +4,5 @@ source "http://rubygems.org"
 gem "cinch"
 
 # Testing
-gem "spork"
+gem "watchr"
 gem "rspec", :require => "spec"
