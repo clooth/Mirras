@@ -1,2 +1,2 @@
 # Mirras: Runescape IRC Bot
-## Developed by Kandarin.net
+# Developed by Kandarin.net
