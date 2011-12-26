@@ -1,33 +1,54 @@
-require 'cinch'
+#
+# Mirras Runescape IRC Bot
+# Author: Clooth <zenverse@gmail.com>
+# Feature: Main bot
+#
 
-module Mirras
-  # General
-  COMMAND_PREFIXES       = "(!|@|.|~)"
-  # Dicing
-  DICING_RESPONSE_FORMAT = "Rolled: %s"
-end
+require 'cinch'
+require 'cinch/storage/yaml'
+require './lib/authentication'
+require './lib/announcer'
+
+Dir["./plugins/**/*.rb"].each {|file|
+  require file
+}
 
 mirras = Cinch::Bot.new do
   configure do |c|
-    c.server          = 'irc.swiftirc.net'
-    c.channels        = ['#mirras']
-    c.nick            = 'Mirras'
-    c.realname        = 'Mirras IRC Bot'
-    c.user            = 'Mirras ALPHA'
-    c.reconnect       = true
+    c.server = "irc.swiftirc.net"
+    c.channels = ["#mirras"]
+    c.nick = "Mirras"
+    c.realname = "Mirras"
+    c.user = "Mirras ALPHA"
+    c.password = ""
+    c.reconnect = true
+    c.plugins.plugins = [Settings, Transporter, InviteJoiner]
+    c.plugins.prefix = /^[!@]/
+
+    c.storage.backend = Cinch::Storage::YAML
+    c.storage.basedir = "./data/"
+    c.storage.autosave = true
   end
 
-  # Dicing
-  # Usage: !dice 50x2/6x2/100x1
-  # TODO: Abstract into a plugin
-  # TODO: Add support for more dice types
-  on :message, /#{Mirras::COMMAND_PREFIXES}dice (50x2|6x2|100x1)/ do |m, prefix, roll_type|
-    rolled = case roll_type
-      when "50x2"  then "#{rand(49)+1} and #{rand(49)+1}"
-      when "6x2"   then "#{rand(5)+1} and #{rand(5)+1}"
-      when "100x1" then "#{rand(99)+1}"
+  # Join a channel
+  on :message, /^!join (.+)/ do |m, channel|
+    bot.join(channel) if is_admin?(m.user)
+  end
+
+  # Part a channel
+  on :message, /^!part (.+)/ do |m, channel|
+    channel = channel || m.channel
+
+    if channel
+      bot.part(channel) if is_admin?(m.user)
     end
-    m.reply Mirras::DICING_RESPONSE_FORMAT % rolled
+  end
+
+  # Send a global message
+  on :message, /^!global (.+)/ do |m, text|
+    bot.channels.each do |channel|
+      Channel(channel).send(Format(:red, "[") + Format(:orange, "GLOBAL") + Format(:red,"]") + " #{text}")
+    end
   end
 end
 
