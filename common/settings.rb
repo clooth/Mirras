@@ -63,7 +63,7 @@ class Settings
 
   def initialize(*args)
     super
-    storage[:settings] = {}
+    storage[:settings] ||= {}
   end
 
   # Example command formats:

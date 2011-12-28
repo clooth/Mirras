@@ -3,33 +3,46 @@
 # Author: Clooth <zenverse@gmail.com>
 # Feature: Main bot
 #
-
 require 'cinch'
 require 'cinch/storage/yaml'
+
+# Require extensions
+Dir["./ext/**/*.rb"].each {|file|
+  require file
+}
+
+# Require core modules
 require './lib/authentication'
 require './lib/announcer'
+require './lib/summoner'
 
+# New summoner instance
+$summoner = Summoner.new
+
+# Require common plugins
+Dir["./common/**/*.rb"].each {|file|
+  require file
+}
+
+# Require all plugins
 Dir["./plugins/**/*.rb"].each {|file|
   require file
 }
 
-mirras = Cinch::Bot.new do
-  configure do |c|
-    c.server = "irc.swiftirc.net"
-    c.channels = ["#mirras"]
-    c.nick = "Mirras"
-    c.realname = "Mirras"
-    c.user = "Mirras ALPHA"
-    c.password = ""
-    c.reconnect = true
-    c.plugins.plugins = [Settings, Transporter, InviteJoiner]
-    c.plugins.prefix = /^[!@]/
+# Set some shared plugins for all bots
+$summoner.common_plugins = [Admin]
 
-    c.storage.backend = Cinch::Storage::YAML
-    c.storage.basedir = "./data/"
-    c.storage.autosave = true
-  end
+# Spawn a new instance of the bot
+$summoner.spawn(
+  server:   "irc.swiftirc.net",
+  channels: ["#mirras"],
+  password: "",
+  plugins:  [Google]
+)
 
+$summoner.last_spawn.start
+
+=begin
   # Join a channel
   on :message, /^!join (.+)/ do |m, channel|
     bot.join(channel) if is_admin?(m.user)
@@ -50,6 +63,4 @@ mirras = Cinch::Bot.new do
       Channel(channel).send(Format(:red, "[") + Format(:orange, "GLOBAL") + Format(:red,"]") + " #{text}")
     end
   end
-end
-
-mirras.start
+=end

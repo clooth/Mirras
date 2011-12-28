@@ -36,7 +36,6 @@ class InviteJoiner
 
   def initialize(*args)
     super
-
     @permission_asked = false
     @asked_channel    = nil
   end
@@ -45,7 +44,7 @@ class InviteJoiner
   def join_on_invite(message)
     # If we haven't asked for permission yet
     if @permission_asked == false
-      Channel("#mirras").send("Hey, #{message.user.nick} wants me to join #{message.channel}, can I go?")
+      Channel($CONFIG[:MAIN_CHANNEL]).send("Hey, #{message.user.nick} wants me to join #{message.channel}, can I go?")
       @permission_asked = true
       @asked_channel = message.channel
     end
@@ -58,7 +57,7 @@ class InviteJoiner
     return unless is_admin?(message.user)
     # Were we shown green light?
     unless message.message.scan(/^(#{POSITIVE_ANSWERS.join('|')})$/).empty?
-      Channel("#mirras").send(POSITIVE_RESPONSES[rand(POSITIVE_RESPONSES.size)])
+      Channel($CONFIG[:MAIN_CHANNEL]).send(POSITIVE_RESPONSES[rand(POSITIVE_RESPONSES.size)])
       bot.join(@asked_channel)
       @permission_asked = false
       @asked_channel = nil
@@ -66,7 +65,7 @@ class InviteJoiner
     end
     # No?
     unless message.message.scan(/^(#{NEGATIVE_ANSWERS.join('|')})$/).empty?
-      Channel("#mirras").send(NEGATIVE_RESPONSES[rand(NEGATIVE_RESPONSES.size)])
+      Channel($CONFIG[:MAIN_CHANNEL]).send(NEGATIVE_RESPONSES[rand(NEGATIVE_RESPONSES.size)])
       @permission_asked = false
       @asked_channel = nil
       return
