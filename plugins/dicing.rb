@@ -193,7 +193,7 @@ class Dicing
       # If we have a tie, we need to reroll
       if duel.tied?
         # Grab info
-        contenders = duel.contenders
+        contenders = duel.contenders.map(&:capitalize)
         bet = duel.bet_string
         # Delete old duel
         @ongoing_duels.delete(duel)
@@ -220,6 +220,9 @@ class Dicing
   def roll_combination_dice(m, sides, count)
     count = count.to_i
     sides = sides.to_i
+    if count >= 1000 || sides >= 1000
+      return m.reply("I'm afraid I can't do that, #{m.user.nick}")
+    end
     total = 0; count.times { total += Die.new(sides).roll }
 
     m.reply(brush(MSG_COMBINATION_DICE_ROLL % [count, sides, total]), true)
