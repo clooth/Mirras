@@ -140,6 +140,10 @@ class Dicing
   def new_dicing_duel(m, first_user, second_user, bet)
     channel = m.channel
 
+    # Get the objects
+    first_user  = User(first_user)
+    second_user = User(second_user)
+
     # User validations
     [first_user, second_user].each do |user|
       # Validate users presence in the channel
@@ -151,10 +155,6 @@ class Dicing
     # Make sure the usernames aren't the same
     return m.reply(brush(ERR_USER_DUPLICATED % first_user)) if first_user == second_user
 
-    # Get the objects
-    first_user  = User(first_user)
-    second_user = User(second_user)
-
     # Validate bet format
     unless bet_match = bet.match(/((\d+)(k|m|b|gp))/i)
       return m.reply(brush(ERR_INVALID_BET % bet))
@@ -165,7 +165,7 @@ class Dicing
     @ongoing_duels << duel
 
     # Announce
-    m.reply(brush(MSG_NEW_DICING_DUEL % [duel.spoils_string, duel.contenders.first.nick, duel.contenders.last.nick]))
+    m.reply(brush(MSG_NEW_DICING_DUEL % [duel.spoils_string, duel.contenders.first, duel.contenders.last]))
   end
 
   # Dicing duel roll

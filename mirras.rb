@@ -36,8 +36,8 @@ $summoner.common_plugins = [Admin, Dicing]
 
 # Spawn a new instance of the bot
 $summoner.spawn(
-  server:   "irc.swiftirc.net",
-  channels: ["#mirras"],
+  server:   "local.irc.dev",
+  channels: ["#dev"],
   password: "",
   plugins:  [Google, Dicing, InviteJoiner]
 )
