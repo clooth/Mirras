@@ -4,6 +4,9 @@
 # Feature: Mirras Summoner
 # This class takes care of bot spawning and managing.
 #
+# TODO:
+# - Check for nick collision on connect
+#
 class Summoner
 
   # Initialize a new summoner instance

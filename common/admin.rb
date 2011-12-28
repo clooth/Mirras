@@ -1,3 +1,22 @@
+#
+# Mirras Runescape IRC Bot
+# Author: Clooth <zenverse@gmail.com>
+# Module: Mirras Admin Plugin
+# This plugin allows bot admins to manage the spawns
+# Features:
+#   spawn server.hostname [channel_to_join [spawn_identifier]]
+#     Spawns a new bot instance with an incremented (or custom)
+#     identifier to the specific network & channel
+#   locate bot_identifier
+#     Returns what server the spawn is on and which channels
+#   list our spawns
+#     List all currently connected spawns, their networks and channels they're on
+#   say channel message
+#   say message
+#     Say the given message on the current (or specified) channel
+#   join channel_name
+#     Join the specified channel
+#
 require 'cinch'
 
 class Admin
@@ -6,11 +25,18 @@ class Admin
   include Authentication
   include Mirras::Paintbrush
 
-  # Personalized prefixes for admin command
+  # All admin commands are prefixed by the bot's name
+  # So we don't get a shitload of
   set(:prefix => Proc.new{|m| "%s: " % m.bot.nick})
 
+  # Set up some initial storage for admin plugin settings
+  def initialize(*args)
+    super
+    storage[:settings] ||= {}
+  end
+
   # Spawning new instances of Mirras
-  # !spawn server.address [channel [identifier]]
+  # Mirras: spawn server.address [channel [identifier]]
   match /spawn ([\w\.]+) ?([\w\#\-]+)? ?([a-zA-Z0-9]+)?$/, :method => :spawn_instance
   def spawn_instance(m, server, channel=nil, identifier=nil)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
@@ -47,7 +73,7 @@ class Admin
   end
 
   # Locating other instances
-  # !locate identifier
+  # Mirras: locate identifier
   match /locate ([\w]+)/, method: :locate_instance
   def locate_instance(m, identifier)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
@@ -59,6 +85,7 @@ class Admin
   end
 
   # List all spawns across networks
+  # Mirras: list our spawns
   match /list our spawns$/, method: :list_spawns
   def list_spawns(m)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
@@ -70,9 +97,11 @@ class Admin
     end
   end
 
-  # Sending commands to other bots
+  # Saying the specified text on the current or the wanted channel
+  # Mirras: say lol
+  # Mirras: say #mirras hello
   match /say (.+)/, method: :say_stuff
-  def say_stuff(m, text)
+  def say_stuff(m, text, channel=nil)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
     m.reply(brush(text))
   end
@@ -82,14 +111,10 @@ class Admin
   def join_channel(m, target)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
 
-    # Multiple channels
-    targets = target.split(' ')
-    targets.each do |channel|
-      Channel(channel).join
-    end
-
-    if targets.size > 0
-      m.reply(brush('I entered <col="orange">'+ targets.join(', ') +'</col>'))
+    if m.bot.channels.include? Channel(target)
+      m.reply(brush('I\'m already there..'))
+    else
+      m.reply(brush('I entered <col="orange">'+ target +'</col>'))
     end
   end
 
@@ -97,15 +122,19 @@ class Admin
   def part_channel(m, target)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
 
-    # Multiple channels
-    targets = target.split(' ')
-    targets.each do |channel|
-      Channel(channel).part
+    channel = Channel(target)
+
+    unless channel.is_a? Channel
+      return m.reply(brush('Uhh.. what?'))
     end
 
-    if targets.size > 0
-      m.reply(brush('I left from <col="orange">'+ targets.join(', ') +'</col>'))
+    if m.bot.channels.include? channel
+      channel.part
+    else
+      return m.reply(brush('How can I leave from where I\'m not..?'))
     end
+
+    m.reply(brush('I left from <col="orange">'+ channel.name +'</col>'))
   end
 
   # Disconnecting and reconnecting
