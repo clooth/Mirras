@@ -2,9 +2,6 @@
 # Mirras IRC Bot
 # Author: Clooth <zenverse@gmail.com>
 # Feature: Dicing Plugin
-# Simple Dicing:
-# <actor1> !roll 100x1
-# <mirras> actor1: Rolled 56
 
 # Dice object, can be multiple sided
 class Die
@@ -17,7 +14,7 @@ class Die
 
   # Perform a roll on the die
   def roll
-    (rand(@sides-1)+1).to_i
+    (rand(@sides)+1).to_i
   end
 
   def self.six
@@ -212,6 +209,9 @@ class Dicing
   # Normal dice roll
   match /roll (\d+)$/i, method: :roll_normal_dice
   def roll_normal_dice(m, sides)
+    if sides <= 1
+      return m.reply("What exactly are you trying to do, #{m.user.nick}?")
+    end
     m.reply(brush(MSG_NORMAL_DICE_ROLL % [sides.to_i, Die.new(sides.to_i).roll]), true)
   end
 
@@ -220,6 +220,9 @@ class Dicing
   def roll_combination_dice(m, sides, count)
     count = count.to_i
     sides = sides.to_i
+    if count <= 1 || sides <= 1
+      return m.reply("What exactly are you trying to do, #{m.user.nick}?")
+    end
     if count >= 1000 || sides >= 1000
       return m.reply("I'm afraid I can't do that, #{m.user.nick}")
     end
