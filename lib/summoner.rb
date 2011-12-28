@@ -16,7 +16,7 @@ class Summoner
       realname:       "Mirras",
       user:           "Mirras Alpha",
       plugins:        [],
-      plugins_prefix: /^[!@]/,
+      plugins_prefix: /^!|@/,
       channels:       []
     }
     # Possible overriding of default values

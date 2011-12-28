@@ -48,19 +48,12 @@ module Mirras
     protected
 
     def parse_text_styles(text)
-
+      text
     end
 
     def parse_text_colors(text)
       open_tags  = 0
       close_tags = 0
-      text.scan(/#{COLOR_START_TAG_REGEXP}/).each do |values|
-        open_tags += 1
-        colors     = values.pop.split(',').take(2).inject([]) {|a,v|
-          a << Colors[v.to_sym]; a
-        }
-      end
-      text.gsub(/#{COLOR_START_TAG_REGEXP}/)
       text.scan(/(<col=\"([\w,]+)\">)(((?!<col).)*)(<\/col>)/).each do |values|
         start_tag, colors, content, x, end_tag = values
 

@@ -3,6 +3,7 @@
 # Author: Clooth <zenverse@gmail.com>
 # Feature: Main bot
 #
+require 'partyhat'
 require 'cinch'
 require 'cinch/storage/yaml'
 
@@ -31,14 +32,14 @@ Dir["./plugins/**/*.rb"].each {|file|
 }
 
 # Set some shared plugins for all bots
-$summoner.common_plugins = [Admin]
+$summoner.common_plugins = [Admin, Dicing]
 
 # Spawn a new instance of the bot
 $summoner.spawn(
-  server:   "local.irc.dev",
-  channels: ["#dev"],
+  server:   "irc.swiftirc.net",
+  channels: ["#mirras"],
   password: "",
-  plugins:  [Google]
+  plugins:  [Google, Dicing, InviteJoiner]
 )
 
 $summoner.last_spawn.start

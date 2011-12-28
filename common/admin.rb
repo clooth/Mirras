@@ -40,6 +40,8 @@ class Admin
       options[:identifier] = identifier
     end
 
+    m.reply(brush('Okay, I summoned a spawn to <col="orange">%s%s</col>' % [server, channel]))
+
     # Everything is OK, so let's spawn a new instance
     $summoner.spawn(options).start
   end
@@ -56,6 +58,7 @@ class Admin
     m.reply("Couldn't find spawn " + Format(:red, identifier));
   end
 
+  # List all spawns across networks
   match /list our spawns$/, method: :list_spawns
   def list_spawns(m)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
@@ -72,6 +75,44 @@ class Admin
   def say_stuff(m, text)
     return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
     m.reply(brush(text))
+  end
+
+  # Joining and parting channels
+  match /join (.+)/, method: :join_channel
+  def join_channel(m, target)
+    return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
+
+    # Multiple channels
+    targets = target.split(' ')
+    targets.each do |channel|
+      Channel(channel).join
+    end
+
+    if targets.size > 0
+      m.reply(brush('I entered <col="orange">'+ targets.join(', ') +'</col>'))
+    end
+  end
+
+  match /leave (.+)/, method: :part_channel
+  def part_channel(m, target)
+    return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
+
+    # Multiple channels
+    targets = target.split(' ')
+    targets.each do |channel|
+      Channel(channel).part
+    end
+
+    if targets.size > 0
+      m.reply(brush('I left from <col="orange">'+ targets.join(', ') +'</col>'))
+    end
+  end
+
+  # Disconnecting and reconnecting
+  match /disconnect$/, method: :disconnect
+  def disconnect(m)
+    return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
+    m.bot.quit("Farewell my friends.")
   end
 
   private

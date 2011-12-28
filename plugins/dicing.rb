@@ -1,7 +1,7 @@
 #
-# Mirras Runescape IRC Bot
+# Mirras IRC Bot
 # Author: Clooth <zenverse@gmail.com>
-# Feature: Dicing
+# Feature: Dicing Plugin
 # Simple Dicing:
 # <actor1> !roll 100x1
 # <mirras> actor1: Rolled 56
@@ -19,60 +19,203 @@ class Die
   def roll
     (rand(@sides-1)+1)
   end
+
+  def self.six
+    Die.new(6).roll
+  end
+
+  def self.twelve
+    Die.new(12).roll
+  end
+
+  def self.hundred
+    Die.new(100).roll
+  end
+end
+
+# Dicing duel object with bot users, spoils and status
+class DicingDuel
+  @bet           = nil
+  @bet_string    = nil
+  @spoils        = nil
+  @spoils_string = nil
+
+  @contenders = []
+  @rolls      = {}
+
+  @winner = nil
+  @loser  = nil
+
+  def initialize(first_user, second_user, bet_info)
+    # Save users
+    @contenders = [first_user.nick.downcase, second_user.nick.downcase]
+
+    # Parse the given bet and double it
+    @bet           = Partyhat::Util.parse_number(bet_info[0])
+    @bet_string    = bet_info[0]
+
+    puts @bet
+    puts @bet_string
+
+    # Calculate spoils
+    @spoils        = (@bet * 2).to_f
+    @spoils        = (@spoils / 100) * 95
+    @spoils_string = Partyhat::Util.shorten_number(@spoils)
+
+    puts @spoils
+    puts @spoils_string
+
+    # Store rolls
+    @rolls = {}
+  end
+  attr_accessor :contenders, :rolls, :bet, :bet_string, :spoils, :spoils_string
+
+  def already_rolled?(user)
+    @rolls.has_key?(user.nick.downcase)
+  end
+
+  def get_roll_for(user)
+    @rolls[user.nick.downcase]
+  end
+
+  def roll_dice(user)
+    @rolls[user.nick.downcase] = (Die.new(6).roll + Die.new(6).roll)
+  end
+
+  def finished?
+    @rolls.size == 2
+  end
+
+  def winning_roll
+    @rolls.values.max
+  end
+
+  def winning_user
+    @rolls.key(winning_roll)
+  end
+
+  def losing_roll
+    @rolls.values.min
+  end
+
+  def losing_user
+    @rolls.key(losing_roll)
+  end
+
+  def tied?
+    losing_roll == winning_roll
+  end
 end
 
 class Dicing
   include Cinch::Plugin
+  include Authentication
+  include Mirras::Paintbrush
 
   # Error messages
+  ERR_USER_NOT_PRESENT     = 'I couldn\'t find <col="orange">%s</col> on the channel. Both contenders <col="orange">must be present</col> in the channel before a duel can begin.'
+  ERR_USER_ALREADY_DUELING = 'There is already an ongoing duel for <col="orange">%s</col>'
+  ERR_USER_DUPLICATED      = 'How is <col="orange">%s</col> supposed to duel alone?'
+  ERR_INVALID_BET          = 'The bet <col="orange">"%s"</col> is not valid. Valid bet formats include: <col="orange">50k</col>, <col="orange">100k</col>, <col="orange">1m</col>, <col="orange">200m</col> and <col="orange">1b</col>'
+  ERR_NO_DUEL_FOUND        = 'You are currently <col="orange">not in a duel</col>.'
+  ERR_ALREADY_ROLLED       = 'You already rolled once, no second tries.'
+
   # Notice messages
+  MSG_NEW_DICING_DUEL      = '<col="orange">New Duel</col> | Pot: <col="orange">%s</col> | Contenders <col="orange">%s</col> and <col="orange">%s</col>, please roll your dice by typing <col="orange">!roll</col> | Good luck!'
+  MSG_NEW_DICING_DUEL_ROLL = '<col="orange">Duel</col> | <col="orange">Rolling two 6-sided dice</col> | <col="orange">%s</col> rolled a <col="orange">%s</col>'
+  MSG_DICING_DUEL_OVER     = '<col="orange">Duel ended!</col> | Congratulations, <col="orange">%s</col>, you won! | Spoils: <col="orange">%s</col>'
+  MSG_DICING_DUEL_TIED     = '<col="orange">Duel ended!</col> | It was a tie.. re-rolling!'
+
+  MSG_NORMAL_DICE_ROLL     = '<col="orange">Rolling a %s-sided die!</col> | Rolled: <col="orange">%s</col>'
 
   def initialize(*args)
     super
-    storage[:dicing] = {}
+    # On going
+    @ongoing_duels = []
   end
 
-  # Normal dicing methods include !dice and !roll
-  match /(dice|roll) (.+)/i, method: :roll_single_mode
-
-  # Perform a normal single-player dice roll
-  def roll_single_mode(m, mode)
+  # Start a new dicing duel
+  # !newdd (name1) (name2) (bet)
+  match /newdd (.+) (.+) (.+)/, method: :new_dicing_duel
+  def new_dicing_duel(m, first_user, second_user, bet)
     channel = m.channel
-    user    = m.user
-  end
-end
-=begin
-class Dicing
-  include Cinch::Plugin
-  RESPONSE = "Rolled: %s"
 
-  match /dice (.+)/i
-  def perform_roll(message, roll_type)
-    channel = message.channel
-    user    = message.user
-    if channel.owner?(user) || channel.opped?(user) ||
-       channel.voiced?(user) || channel.half_opped?(user)
-      if roll_type == "50x2"
-        return RESPONSE % "#{rand(49)+1} and #{rand(49)+1}"
-      elsif roll_type == "100x1"
-        return RESPONSE % "#{rand(99)+1}"
+    # User validations
+    [first_user, second_user].each do |user|
+      # Validate users presence in the channel
+      return m.reply(brush(ERR_USER_NOT_PRESENT % user))     unless channel.has_user?(user)
+      # Validate that the users aren't already in a dicing duel
+      return m.reply(brush(ERR_USER_ALREADY_DUELING % user)) unless dicing_duel_for(user).nil?
+    end
+
+    # Make sure the usernames aren't the same
+    return m.reply(brush(ERR_USER_DUPLICATED % first_user)) if first_user == second_user
+
+    # Get the objects
+    first_user  = User(first_user)
+    second_user = User(second_user)
+
+    # Validate bet format
+    unless bet_match = bet.match(/((\d+)(k|m|b|gp))/i)
+      return m.reply(brush(ERR_INVALID_BET % bet))
+    end
+
+    # Initiate new dicing duel
+    duel = DicingDuel.new(first_user, second_user, bet_match)
+    @ongoing_duels << duel
+
+    # Announce
+    m.reply(brush(MSG_NEW_DICING_DUEL % [duel.spoils_string, duel.contenders.first.nick, duel.contenders.last.nick]))
+  end
+
+  # Dicing duel roll
+  match /roll/i, method: :roll_duel_dice
+  def roll_duel_dice(m)
+    user = m.user
+    duel = dicing_duel_for(user)
+    # Duel in progress?
+    return m.reply(brush(ERR_NO_DUEL_FOUND % user.nick)) if duel.nil?
+    # Already rolled?
+    return m.reply(brush(ERR_ALREADY_ROLLED % user.nick)) if duel.already_rolled?(user)
+
+    # Roll the dice!
+    m.reply(brush(MSG_NEW_DICING_DUEL_ROLL % [user.nick, duel.roll_dice(user)]))
+
+    # Are we finished?
+    if duel.finished?
+      # If we have a tie, we need to reroll
+      if duel.tied?
+        # Grab info
+        contenders = duel.contenders
+        bet = duel.bet_string
+        # Delete old duel
+        @ongoing_duels.delete(duel)
+        # Notify of the tied duel
+        m.reply(brush(MSG_DICING_DUEL_TIED % [duel.winning_user.nick, duel.spoils_string]))
+        # Create new duel
+        return new_dicing_duel(m, contenders.first, contenders.last, bet)
+      else
+        m.reply(brush(MSG_DICING_DUEL_OVER % [duel.winning_user.nick, duel.spoils_string]))
+        @ongoing_duels.delete(duel)
+        return
       end
     end
-    if roll_type == "6x2"
-      return RESPONSE % "#{rand(5)+1} and #{rand(5)+1}"
-    end
-    if roll_type == "12x1"
-      return RESPONSE % "#{rand(11)+1}"
-    end
   end
 
-  def execute(m, roll_type)
-    roll = perform_roll(m, roll_type)
-    unless roll.nil?
-      m.reply(roll, true)
-    else
-      m.reply("Possible dicing parameters are: 6x2, 12x1, 50x2 and 100x1", true)
+  # Normal dice roll
+  match /roll (\d)/i, method: :roll_normal_dice
+  def roll_normal_dice(m, sides)
+    m.reply(MSG_NORMAL_DICE_ROLL % [sides, Die.new(sides).roll], true)
+  end
+
+  private
+
+  def dicing_duel_for(user)
+    @ongoing_duels.each do |duel|
+      if duel.contenders.include?(user.nick.downcase)
+        return duel
+      end
     end
+    nil
   end
 end
-=end
