@@ -5,7 +5,7 @@
 # Provides helpers for checking user permissions and ranks
 #
 module Authentication
-  ADMINS = ["Clooth"]
+  ADMINS = ["Clooth", "Clooth_"]
 
   # Check if a user is an admin of the bot
   def is_admin?(user)

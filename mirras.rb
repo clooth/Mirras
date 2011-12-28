@@ -13,6 +13,7 @@ Dir["./ext/**/*.rb"].each {|file|
 
 # Require core modules
 require './lib/authentication'
+require './lib/paintbrush'
 require './lib/announcer'
 require './lib/summoner'
 
@@ -34,8 +35,8 @@ $summoner.common_plugins = [Admin]
 
 # Spawn a new instance of the bot
 $summoner.spawn(
-  server:   "irc.swiftirc.net",
-  channels: ["#mirras"],
+  server:   "local.irc.dev",
+  channels: ["#dev"],
   password: "",
   plugins:  [Google]
 )

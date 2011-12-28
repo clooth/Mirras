@@ -2,8 +2,9 @@ require 'cinch'
 
 class Admin
   include Cinch::Plugin
-  include Authentication
   include Cinch::Helpers
+  include Authentication
+  include Mirras::Paintbrush
 
   # Personalized prefixes for admin command
   set(:prefix => Proc.new{|m| "%s: " % m.bot.nick})
@@ -67,14 +68,10 @@ class Admin
   end
 
   # Sending commands to other bots
-  match /tell ([a-zA-Z0-9]+) to (.+)/, method: :tell_spawn
-  def tell_spawn(m, identifier, params)
-
-  end
-
-  match /join (\#[a-zA-Z0-9\-]+)$/, method: :tell_spawn
-  def tell_spawn(m, identifier, params)
-
+  match /say (.+)/, method: :say_stuff
+  def say_stuff(m, text)
+    return m.reply("I'm afraid I can't do that, #{m.user.nick}") unless is_admin?(m.user)
+    m.reply(brush(text))
   end
 
   private
