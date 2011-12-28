@@ -36,8 +36,8 @@ $summoner.common_plugins = [Admin, Dicing]
 
 # Spawn a new instance of the bot
 $summoner.spawn(
-  server:   "local.irc.dev",
-  channels: ["#dev"],
+  server:   ARGV[0] || "local.irc.dev",
+  channels: ARGV[1].to_a || ["#dev"],
   password: "",
   plugins:  [Google, Dicing, InviteJoiner]
 )
