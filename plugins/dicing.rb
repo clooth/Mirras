@@ -17,7 +17,7 @@ class Die
 
   # Perform a roll on the die
   def roll
-    (rand(@sides-1)+1)
+    (rand(@sides-1)+1).to_i
   end
 
   def self.six
@@ -54,16 +54,10 @@ class DicingDuel
     @bet           = Partyhat::Util.parse_number(bet_info[0])
     @bet_string    = bet_info[0]
 
-    puts @bet
-    puts @bet_string
-
     # Calculate spoils
     @spoils        = (@bet * 2).to_f
     @spoils        = (@spoils / 100) * 95
     @spoils_string = Partyhat::Util.shorten_number(@spoils)
-
-    puts @spoils
-    puts @spoils_string
 
     # Store rolls
     @rolls = {}
@@ -118,15 +112,18 @@ class Dicing
   ERR_USER_DUPLICATED      = 'How is <col="orange">%s</col> supposed to duel alone?'
   ERR_INVALID_BET          = 'The bet <col="orange">"%s"</col> is not valid. Valid bet formats include: <col="orange">50k</col>, <col="orange">100k</col>, <col="orange">1m</col>, <col="orange">200m</col> and <col="orange">1b</col>'
   ERR_NO_DUEL_FOUND        = 'You are currently <col="orange">not in a duel</col>.'
+  ERR_NO_DUEL_FOUND_USER   = '<col="orange">%s</col> is currently <col="orange">not in a duel</col>.'
   ERR_ALREADY_ROLLED       = 'You already rolled once, no second tries.'
 
   # Notice messages
   MSG_NEW_DICING_DUEL      = '<col="orange">New Duel</col> | Pot: <col="orange">%s</col> | Contenders <col="orange">%s</col> and <col="orange">%s</col>, please roll your dice by typing <col="orange">!roll</col> | Good luck!'
-  MSG_NEW_DICING_DUEL_ROLL = '<col="orange">Duel</col> | <col="orange">Rolling two 6-sided dice</col> | <col="orange">%s</col> rolled a <col="orange">%s</col>'
-  MSG_DICING_DUEL_OVER     = '<col="orange">Duel ended!</col> | Congratulations, <col="orange">%s</col>, you won! | Spoils: <col="orange">%s</col>'
-  MSG_DICING_DUEL_TIED     = '<col="orange">Duel ended!</col> | It was a tie.. re-rolling!'
+  MSG_NEW_DICING_DUEL_ROLL = '<col="orange">%s vs. %s</col> | <col="orange">Duel</col> | <col="orange">Rolling two 6-sided dice</col> | <col="orange">%s</col> rolled a <col="orange">%s</col>'
+  MSG_DICING_DUEL_OVER     = '<col="orange">%s vs. %s</col> | <col="orange">Duel ended!</col> | Congratulations, <col="orange">%s</col>, you won! | Spoils: <col="orange">%s</col>'
+  MSG_DICING_DUEL_TIED     = '<col="orange">%s vs. %s</col> | <col="orange">Duel ended!</col> | It was a tie.. re-rolling!'
+  MSG_DICING_DUEL_STOPPED  = '<col="orange">Duel ended!</col> | The duel between <col="orange">%s</col> and <col="orange">%s</col> was ended'
 
   MSG_NORMAL_DICE_ROLL     = '<col="orange">Rolling a %s-sided die!</col> | Rolled: <col="orange">%s</col>'
+  MSG_COMBINATION_DICE_ROLL= '<col="orange">Rolling %s %s-sided dice!</col> | Rolled: <col="orange">%s</col>'
 
   def initialize(*args)
     super
@@ -168,8 +165,18 @@ class Dicing
     m.reply(brush(MSG_NEW_DICING_DUEL % [duel.spoils_string, duel.contenders.first, duel.contenders.last]))
   end
 
+  match /stopdd ?(.+)?/, method: :end_dicing_duel
+  def end_dicing_duel(m, user)
+    duel = dicing_duel_for(user.nick)
+    if duel.nil?
+      return m.reply(ERR_NO_DUEL_FOUND_USER % user.nick)
+    end
+    ended = @ongoing_duels.delete(duel)
+    return m.reply(MSG_DICING_DUEL_STOPPED % [ended.contenders.first, ended.contenders.last])
+  end
+
   # Dicing duel roll
-  match /roll/i, method: :roll_duel_dice
+  match /roll$/i, method: :roll_duel_dice
   def roll_duel_dice(m)
     user = m.user
     duel = dicing_duel_for(user)
@@ -179,7 +186,7 @@ class Dicing
     return m.reply(brush(ERR_ALREADY_ROLLED % user.nick)) if duel.already_rolled?(user)
 
     # Roll the dice!
-    m.reply(brush(MSG_NEW_DICING_DUEL_ROLL % [user.nick, duel.roll_dice(user)]))
+    m.reply(brush(MSG_NEW_DICING_DUEL_ROLL % [duel.contenders.first, duel.contenders.last, user.nick, duel.roll_dice(user)]))
 
     # Are we finished?
     if duel.finished?
@@ -191,11 +198,11 @@ class Dicing
         # Delete old duel
         @ongoing_duels.delete(duel)
         # Notify of the tied duel
-        m.reply(brush(MSG_DICING_DUEL_TIED % [duel.winning_user.nick, duel.spoils_string]))
+        m.reply(brush(MSG_DICING_DUEL_TIED % [duel.contenders.first, duel.contenders.last]))
         # Create new duel
         return new_dicing_duel(m, contenders.first, contenders.last, bet)
       else
-        m.reply(brush(MSG_DICING_DUEL_OVER % [duel.winning_user.nick, duel.spoils_string]))
+        m.reply(brush(MSG_DICING_DUEL_OVER % [duel.contenders.first, duel.contenders.last, duel.winning_user, duel.spoils_string]))
         @ongoing_duels.delete(duel)
         return
       end
@@ -203,9 +210,19 @@ class Dicing
   end
 
   # Normal dice roll
-  match /roll (\d)/i, method: :roll_normal_dice
+  match /roll (\d+)$/i, method: :roll_normal_dice
   def roll_normal_dice(m, sides)
-    m.reply(MSG_NORMAL_DICE_ROLL % [sides, Die.new(sides).roll], true)
+    m.reply(brush(MSG_NORMAL_DICE_ROLL % [sides.to_i, Die.new(sides.to_i).roll]), true)
+  end
+
+  # Combination dice roll
+  match /roll (\d+)x(\d+)$/i, method: :roll_combination_dice
+  def roll_combination_dice(m, sides, count)
+    count = count.to_i
+    sides = sides.to_i
+    total = 0; count.times { total += Die.new(sides).roll }
+
+    m.reply(brush(MSG_COMBINATION_DICE_ROLL % [count, sides, total]), true)
   end
 
   private
