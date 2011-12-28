@@ -30,14 +30,19 @@ class Die
   end
 end
 
-# Dicing duel object with bot users, spoils and status
+# DicingDuel Object
+# Allows two users to compete in a dicing duel
 class DicingDuel
+  # The original bet amount and its text version
   @bet           = nil
   @bet_string    = nil
+  # The spoils (pot) and its text version
   @spoils        = nil
   @spoils_string = nil
 
+  # The duel contenders are stored in this array
   @contenders = []
+  # The rolls done by the contenders
   @rolls      = {}
 
   @winner = nil
@@ -125,7 +130,8 @@ class Dicing
   def initialize(*args)
     super
     # On going
-    @ongoing_duels = []
+    storage[:dicing_duels] ||= {}
+    storage.save
   end
 
   # Start a new dicing duel
@@ -134,16 +140,24 @@ class Dicing
   def new_dicing_duel(m, first_user, second_user, bet)
     channel = m.channel
 
+    # Check if the current channel has duels already
+    unless storage[:dicing_duels].has_key?(channel.name)
+      storage[:dicing_duels][channel.name] = []
+      storage.save
+    end
+
     # Get the objects
     first_user  = User(first_user)
     second_user = User(second_user)
 
     # User validations
     [first_user, second_user].each do |user|
+      # Make sure they aren't mirras itself
+      return m.reply("I don't want to play! I'd rather keep my money..")
       # Validate users presence in the channel
       return m.reply(brush(ERR_USER_NOT_PRESENT % user))     unless channel.has_user?(user)
       # Validate that the users aren't already in a dicing duel
-      return m.reply(brush(ERR_USER_ALREADY_DUELING % user)) unless dicing_duel_for(user).nil?
+      return m.reply(brush(ERR_USER_ALREADY_DUELING % user)) unless dicing_duel_for(user, channel).nil?
     end
 
     # Make sure the usernames aren't the same
@@ -156,7 +170,8 @@ class Dicing
 
     # Initiate new dicing duel
     duel = DicingDuel.new(first_user, second_user, bet_match)
-    @ongoing_duels << duel
+    storage[:dicing_duels][channel.name] << duel
+    storage.save
 
     # Announce
     m.reply(brush(MSG_NEW_DICING_DUEL % [duel.spoils_string, duel.contenders.first, duel.contenders.last]))
@@ -164,11 +179,11 @@ class Dicing
 
   match /stopdd ?(.+)?/, method: :end_dicing_duel
   def end_dicing_duel(m, user)
-    duel = dicing_duel_for(User(user))
+    duel = dicing_duel_for(User(user), m.channel)
     if duel.nil?
       return m.reply(brush(ERR_NO_DUEL_FOUND_USER % User(user)))
     end
-    ended = @ongoing_duels.delete(duel)
+    ended = storage[:dicing_duels][m.channel.name].delete(duel)
     return m.reply(brush(MSG_DICING_DUEL_STOPPED % [ended.contenders.first, ended.contenders.last]))
   end
 
@@ -176,7 +191,7 @@ class Dicing
   match /roll$/i, method: :roll_duel_dice
   def roll_duel_dice(m)
     user = m.user
-    duel = dicing_duel_for(user)
+    duel = dicing_duel_for(user, m.channel)
     # Duel in progress?
     return m.reply(brush(ERR_NO_DUEL_FOUND % user.nick)) if duel.nil?
     # Already rolled?
@@ -193,14 +208,14 @@ class Dicing
         contenders = duel.contenders.map(&:capitalize)
         bet = duel.bet_string
         # Delete old duel
-        @ongoing_duels.delete(duel)
+        storage[:dicing_duels][m.channel.name].delete(duel)
         # Notify of the tied duel
         m.reply(brush(MSG_DICING_DUEL_TIED % [duel.contenders.first, duel.contenders.last]))
         # Create new duel
         return new_dicing_duel(m, contenders.first, contenders.last, bet)
       else
         m.reply(brush(MSG_DICING_DUEL_OVER % [duel.contenders.first, duel.contenders.last, duel.winning_user, duel.spoils_string]))
-        @ongoing_duels.delete(duel)
+        storage[:dicing_duels][m.channel.name].delete(duel)
         return
       end
     end
@@ -233,8 +248,11 @@ class Dicing
 
   private
 
-  def dicing_duel_for(user)
-    @ongoing_duels.each do |duel|
+  def dicing_duel_for(user, channel)
+    unless storage[:dicing_duels].has_key?(channel.name)
+      return nil
+    end
+    storage[:dicing_duels][channel.name].each do |duel|
       if duel.contenders.include?(user.nick.downcase)
         return duel
       end

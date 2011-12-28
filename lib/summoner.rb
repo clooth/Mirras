@@ -72,6 +72,9 @@ class Summoner
         c.reconnect       = true
         c.plugins.plugins = plugins
         c.plugins.prefix  = options[:plugins_prefix]
+        c.storage.backend = Cinch::Storage::YAML
+        c.storage.basedir = "./data/"
+        c.storage.autosave = true
       end
     end
 
