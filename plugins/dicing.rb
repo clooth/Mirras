@@ -169,10 +169,10 @@ class Dicing
   def end_dicing_duel(m, user)
     duel = dicing_duel_for(User(user))
     if duel.nil?
-      return m.reply(ERR_NO_DUEL_FOUND_USER % User(user))
+      return m.reply(brush(ERR_NO_DUEL_FOUND_USER % User(user)))
     end
     ended = @ongoing_duels.delete(duel)
-    return m.reply(MSG_DICING_DUEL_STOPPED % [ended.contenders.first, ended.contenders.last])
+    return m.reply(brush(MSG_DICING_DUEL_STOPPED % [ended.contenders.first, ended.contenders.last]))
   end
 
   # Dicing duel roll
