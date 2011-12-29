@@ -114,6 +114,7 @@ class Admin
     if m.bot.channels.include? Channel(target)
       m.reply(brush('I\'m already there..'))
     else
+      Channel(target).join
       m.reply(brush('I entered <col="orange">'+ target +'</col>'))
     end
   end
