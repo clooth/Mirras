@@ -19,7 +19,7 @@ require './lib/announcer'
 require './lib/summoner'
 
 # New summoner instance
-$summoner = Summoner.new
+$summoner = Mirras::Summoner.new
 
 # Require common plugins
 Dir["./common/**/*.rb"].each {|file|

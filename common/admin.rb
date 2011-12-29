@@ -22,7 +22,7 @@ require 'cinch'
 class Admin
   include Cinch::Plugin
   include Cinch::Helpers
-  include Authentication
+  include Mirras::Authentication
   include Mirras::Paintbrush
 
   # All admin commands are prefixed by the bot's name
@@ -134,7 +134,7 @@ class Admin
       return m.reply(brush('How can I leave from where I\'m not..?'))
     end
 
-    m.reply(brush('I left from <col="orange">'+ channel.name +'</col>'))
+    m.reply(brush('I left from <col="orange">'+ (channel.name) +'</col>'))
   end
 
   # Disconnecting and reconnecting

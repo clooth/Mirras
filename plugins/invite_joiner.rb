@@ -6,7 +6,7 @@
 #
 class InviteJoiner
   include Cinch::Plugin
-  include Authentication
+  include Mirras::Authentication
 
   # Give the bot permission to join
   POSITIVE_ANSWERS = [

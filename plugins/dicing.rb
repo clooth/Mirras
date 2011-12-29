@@ -105,7 +105,7 @@ end
 
 class Dicing
   include Cinch::Plugin
-  include Authentication
+  include Mirras::Authentication
   include Mirras::Paintbrush
 
   # Error messages
@@ -224,7 +224,7 @@ class Dicing
   # Normal dice roll
   match /roll (\d+)$/i, method: :roll_normal_dice
   def roll_normal_dice(m, sides)
-    if sides <= 1
+    if sides.to_i <= 1
       return m.reply("What exactly are you trying to do, #{m.user.nick}?")
     end
     m.reply(brush(MSG_NORMAL_DICE_ROLL % [sides.to_i, Die.new(sides.to_i).roll]), true)

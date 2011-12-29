@@ -40,8 +40,8 @@ end
 
 class Settings
   include Cinch::Plugin
-  include Authentication
-  include Announcer
+  include Mirras::Authentication
+  include Mirras::Announcer
 
   # Initial channel-specific settings
   CHANNEL_SETTINGS = {
