@@ -153,7 +153,7 @@ class Dicing
     # User validations
     [first_user, second_user].each do |user|
       # Make sure they aren't mirras itself
-      return m.reply("I don't want to play! I'd rather keep my money..") if user.nick = m.bot.nick
+      return m.reply("I don't want to play! I'd rather keep my money..") if user.nick == m.bot.nick
       # Validate users presence in the channel
       return m.reply(brush(ERR_USER_NOT_PRESENT % user))     unless channel.has_user?(user)
       # Validate that the users aren't already in a dicing duel
